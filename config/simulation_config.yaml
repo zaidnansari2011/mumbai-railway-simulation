@@ -1,0 +1,177 @@
+# Mumbai Railway Simulation Configuration
+
+# Network Configuration
+network:
+  # Lines to include in simulation
+  lines:
+    - western
+    - central_main
+    - central_harbour
+    - trans_harbour
+  
+  # Station configuration
+  stations:
+    default_capacity: 1000
+    platform_count: 4
+    
+  # Track configuration
+  tracks:
+    default_capacity: 2
+    signal_blocks: 1
+
+# Train Configuration
+trains:
+  # Default train configuration
+  default:
+    car_count: 12
+    capacity_per_car: 350
+    max_speed_kmh: 100
+    acceleration: 1.2  # m/s²
+    deceleration: 1.5  # m/s²
+    door_opening_time: 20.0  # seconds
+    door_closing_time: 15.0  # seconds
+  
+  # Train types
+  types:
+    local:
+      max_speed_kmh: 80
+      stops_at_all_stations: true
+    fast:
+      max_speed_kmh: 100
+      skip_stations: true
+    express:
+      max_speed_kmh: 110
+      limited_stops: true
+
+# Service Configuration
+services:
+  # Service frequency (minutes)
+  frequency:
+    peak_hours: 3    # Every 3 minutes during peak
+    normal_hours: 6  # Every 6 minutes during normal hours
+    off_peak: 15     # Every 15 minutes during off-peak
+  
+  # Peak hour definitions
+  peak_hours:
+    morning: [7, 10]   # 7 AM to 10 AM
+    evening: [17, 20]  # 5 PM to 8 PM
+  
+  # Service patterns
+  patterns:
+    western_local:
+      route: ["CCG", "MRN", "CRL", "GTR", "BCT", "DAD", "MTN", "MHM", "BVI", "ADH", "BOR", "VR"]
+      frequency_minutes: 6
+      bidirectional: true
+    
+    central_main:
+      route: ["CST", "BYC", "DAD", "KRL", "GHY", "VKD", "TNA", "KYN", "KJT"]
+      frequency_minutes: 8
+      bidirectional: true
+
+# Simulation Configuration
+simulation:
+  # Time settings
+  time_step_seconds: 60     # 1 minute time steps
+  real_time_factor: 1.0     # 1.0 = real time simulation
+  
+  # Default simulation duration
+  default_duration_hours: 24
+  
+  # Logging
+  logging:
+    enabled: true
+    level: "INFO"
+    log_to_file: false
+    log_file: "simulation.log"
+  
+  # Metrics collection
+  metrics:
+    enabled: true
+    collection_interval_minutes: 15
+    export_format: "json"
+
+# Factor Configuration
+factors:
+  # Enable/disable categories
+  categories:
+    infrastructure: true
+    passenger_demand: true
+    weather: true
+    operational: true
+    external_events: true
+    technical: true
+  
+  # Default factor settings
+  defaults:
+    rush_hour:
+      peak_multiplier: 2.5
+      enabled: true
+    
+    weather:
+      heavy_rain_probability: 0.1  # 10% chance during monsoon
+      fog_probability: 0.05         # 5% chance in winter
+      
+    technical:
+      signal_failure_probability: 0.02  # 2% chance per day
+      power_outage_probability: 0.01    # 1% chance per day
+
+# Passenger Demand Configuration
+passengers:
+  # Base demand per station per time step
+  base_demand: 50
+  
+  # Time-based multipliers
+  time_multipliers:
+    rush_hour: 2.5
+    normal_hour: 1.2
+    off_peak: 0.8
+    night: 0.3
+  
+  # Station-specific multipliers (high-traffic stations)
+  station_multipliers:
+    CST: 3.0      # Chhatrapati Shivaji Terminus
+    DAD: 2.5      # Dadar
+    BCT: 2.0      # Mumbai Central
+    BVI: 2.2      # Bandra
+    ADH: 2.1      # Andheri
+    TNA: 1.8      # Thane
+    KYN: 1.5      # Kalyan
+  
+  # Directional flow patterns
+  directional_flow:
+    morning_peak:
+      to_city: 0.8    # 80% towards city
+      from_city: 0.2  # 20% away from city
+    evening_peak:
+      to_city: 0.2    # 20% towards city
+      from_city: 0.8  # 80% away from city
+    normal_hours:
+      to_city: 0.5    # 50% in each direction
+      from_city: 0.5
+
+# Performance Targets
+targets:
+  on_time_performance: 85.0    # 85% trains on time (within 5 minutes)
+  capacity_utilization: 75.0   # 75% average capacity utilization
+  passenger_satisfaction: 80.0  # 80% passenger satisfaction
+  network_efficiency: 90.0     # 90% network efficiency
+  max_delay_minutes: 15.0      # Maximum acceptable delay
+
+# Export Configuration
+export:
+  # Default export format
+  format: "json"
+  
+  # Include in exports
+  include:
+    metrics: true
+    factor_impacts: true
+    train_movements: false  # Can be large
+    passenger_flows: true
+    incidents: true
+  
+  # Export frequency
+  auto_export:
+    enabled: false
+    interval_hours: 1
+    directory: "exports"

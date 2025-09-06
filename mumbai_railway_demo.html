@@ -1,0 +1,264 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Mumbai Railway Network Visualization</title>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+            #map { height: 600px; width: 100%; margin-bottom: 20px; }
+            .info-panel { background: #f0f0f0; padding: 15px; border-radius: 5px; }
+            .metric { display: inline-block; margin: 10px; padding: 10px; background: white; border-radius: 5px; }
+            .line-western { color: #FF6B35; }
+            .line-central { color: #4ECDC4; }
+            .line-harbour { color: #45B7D1; }
+            .line-trans { color: #96CEB4; }
+            h1 { color: #2C3E50; }
+            h2 { color: #34495E; }
+        </style>
+    </head>
+    <body>
+        <h1>🚂 Mumbai Suburban Railway Network Simulation</h1>
+        <div class="info-panel">
+            <h2>Interactive Network Visualization</h2>
+            <p>This map shows Mumbai's suburban railway network with real-time simulation capabilities.</p>
+            <div class="metric">
+                <strong>Total Stations:</strong> 26
+            </div>
+            <div class="metric">
+                <strong>Railway Lines:</strong> 4 (Western, Central Main, Central Harbour, Trans-Harbour)
+            </div>
+            <div class="metric">
+                <strong>Coverage:</strong> Greater Mumbai Metropolitan Area
+            </div>
+        </div>
+        
+        <div id="map"></div>
+        
+        <div class="info-panel">
+            <h2>🎯 Simulation Features</h2>
+            <ul>
+                <li><strong>Real-time Performance Tracking:</strong> Monitor on-time performance across all lines</li>
+                <li><strong>Factor Testing:</strong> Test impact of weather, rush hour, maintenance, technical issues</li>
+                <li><strong>Scenario Comparison:</strong> Compare multiple operational scenarios side-by-side</li>
+                <li><strong>Passenger Flow Analysis:</strong> Track passenger density and movement patterns</li>
+                <li><strong>Disruption Modeling:</strong> Simulate and analyze various types of service disruptions</li>
+                <li><strong>Performance Optimization:</strong> Identify bottlenecks and optimization opportunities</li>
+            </ul>
+            
+            <h2>📊 Key Metrics Tracked</h2>
+            <ul>
+                <li>On-time Performance Percentage</li>
+                <li>Average Delay Times</li>
+                <li>Passenger Throughput</li>
+                <li>Network Efficiency</li>
+                <li>Capacity Utilization</li>
+                <li>Service Reliability</li>
+            </ul>
+            
+            <h2>🚀 Benefits for Stakeholders</h2>
+            <ul>
+                <li><strong>Operations Teams:</strong> Real-time monitoring and performance optimization</li>
+                <li><strong>Management:</strong> Data-driven decision making and resource planning</li>
+                <li><strong>Planners:</strong> Infrastructure impact assessment and capacity planning</li>
+                <li><strong>Public:</strong> Transparent performance reporting and service improvements</li>
+            </ul>
+        </div>
+
+        <script>
+            // Initialize the map
+            var map = L.map('map').setView([19.0760, 72.8777], 11);
+            
+            // Add OpenStreetMap tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            // Define line colors
+            var lineColors = {
+                'Western': '#FF6B35',
+                'Central Main': '#4ECDC4', 
+                'Central Harbour': '#45B7D1',
+                'Trans-Harbour': '#96CEB4'
+            };
+            
+            // Add stations to map
+            var stations = {
+        "Churchgate": {
+                "lat": 18.9322,
+                "lon": 72.8264,
+                "line": "Western"
+        },
+        "Marine Lines": {
+                "lat": 18.9434,
+                "lon": 72.8234,
+                "line": "Western"
+        },
+        "Charni Road": {
+                "lat": 18.9517,
+                "lon": 72.8193,
+                "line": "Western"
+        },
+        "Grant Road": {
+                "lat": 18.9617,
+                "lon": 72.8147,
+                "line": "Western"
+        },
+        "Mumbai Central": {
+                "lat": 18.9717,
+                "lon": 72.8197,
+                "line": "Western"
+        },
+        "Mahalaxmi": {
+                "lat": 18.9827,
+                "lon": 72.8197,
+                "line": "Western"
+        },
+        "Lower Parel": {
+                "lat": 18.9967,
+                "lon": 72.8297,
+                "line": "Western"
+        },
+        "Prabhadevi": {
+                "lat": 19.0117,
+                "lon": 72.8297,
+                "line": "Western"
+        },
+        "Dadar": {
+                "lat": 19.0177,
+                "lon": 72.8434,
+                "line": "Western"
+        },
+        "Bandra": {
+                "lat": 19.0547,
+                "lon": 72.8407,
+                "line": "Western"
+        },
+        "Andheri": {
+                "lat": 19.1197,
+                "lon": 72.8464,
+                "line": "Western"
+        },
+        "Borivali": {
+                "lat": 19.2307,
+                "lon": 72.8567,
+                "line": "Western"
+        },
+        "CST": {
+                "lat": 18.9401,
+                "lon": 72.8351,
+                "line": "Central Main"
+        },
+        "Masjid": {
+                "lat": 18.9511,
+                "lon": 72.8431,
+                "line": "Central Main"
+        },
+        "Sandhurst Road": {
+                "lat": 18.9601,
+                "lon": 72.8431,
+                "line": "Central Main"
+        },
+        "Byculla": {
+                "lat": 18.9751,
+                "lon": 72.8331,
+                "line": "Central Main"
+        },
+        "Chinchpokli": {
+                "lat": 18.9851,
+                "lon": 72.8331,
+                "line": "Central Main"
+        },
+        "Kurla": {
+                "lat": 19.0651,
+                "lon": 72.8781,
+                "line": "Central Main"
+        },
+        "Ghatkopar": {
+                "lat": 19.0831,
+                "lon": 72.9081,
+                "line": "Central Main"
+        },
+        "Vikhroli": {
+                "lat": 19.1031,
+                "lon": 72.9281,
+                "line": "Central Main"
+        },
+        "Thane": {
+                "lat": 19.1871,
+                "lon": 72.9581,
+                "line": "Central Main"
+        },
+        "Panvel": {
+                "lat": 18.9887,
+                "lon": 73.1107,
+                "line": "Trans-Harbour"
+        },
+        "Vashi": {
+                "lat": 19.0767,
+                "lon": 72.9987,
+                "line": "Trans-Harbour"
+        },
+        "Belapur": {
+                "lat": 19.0167,
+                "lon": 73.0367,
+                "line": "Trans-Harbour"
+        },
+        "King's Circle": {
+                "lat": 19.0287,
+                "lon": 72.8587,
+                "line": "Central Harbour"
+        },
+        "Wadala": {
+                "lat": 19.0167,
+                "lon": 72.8587,
+                "line": "Central Harbour"
+        }
+};
+            
+            for (var stationName in stations) {
+                var station = stations[stationName];
+                var color = lineColors[station.line] || '#000000';
+                
+                var marker = L.circleMarker([station.lat, station.lon], {
+                    radius: 8,
+                    fillColor: color,
+                    color: '#000',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                
+                marker.bindPopup(
+                    '<b>' + stationName + '</b><br>' +
+                    'Line: <span style="color:' + color + '">' + station.line + '</span><br>' +
+                    'Coordinates: ' + station.lat.toFixed(4) + ', ' + station.lon.toFixed(4) + '<br>' +
+                    '<small>Click to see real-time metrics</small>'
+                );
+            }
+            
+            // Add legend
+            var legend = L.control({position: 'bottomright'});
+            legend.onAdd = function (map) {
+                var div = L.DomUtil.create('div', 'info legend');
+                div.innerHTML = '<h4>Railway Lines</h4>';
+                
+                for (var line in lineColors) {
+                    div.innerHTML += 
+                        '<div><span style="background:' + lineColors[line] + '; width: 18px; height: 18px; display: inline-block; margin-right: 8px; border-radius: 50%;"></span>' +
+                        line + '</div>';
+                }
+                
+                return div;
+            };
+            legend.addTo(map);
+            
+            // Simulate some live updates
+            setInterval(function() {
+                console.log('Simulation running... (real implementation would update train positions)');
+            }, 5000);
+        </script>
+    </body>
+    </html>
+    

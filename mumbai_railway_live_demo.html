@@ -1,0 +1,1069 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Mumbai Railway Live Demo</title>
+        <meta charset="utf-8">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+            .container { max-width: 1400px; margin: 0 auto; }
+            .header { text-align: center; background: rgba(255,255,255,0.95); padding: 30px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+            .main-content { display: flex; gap: 20px; }
+            .map-section { flex: 2; background: rgba(255,255,255,0.95); padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+            .controls-section { flex: 1; background: rgba(255,255,255,0.95); padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+            #map { height: 600px; border-radius: 10px; border: 3px solid #ddd; }
+            .metric { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; margin: 15px 0; border-radius: 10px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+            .metric h3 { margin: 0 0 10px 0; font-size: 16px; opacity: 0.9; }
+            .metric .value { font-size: 28px; font-weight: bold; }
+            .control-btn { background: #3498db; color: white; border: none; padding: 15px 25px; border-radius: 8px; cursor: pointer; font-size: 16px; width: 100%; margin: 10px 0; transition: all 0.3s; }
+            .control-btn:hover { background: #2980b9; transform: translateY(-2px); }
+            .control-btn.active { background: #e74c3c; }
+            .simulation-status { padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0; font-weight: bold; }
+            .status-running { background: #2ecc71; color: white; }
+            .status-stopped { background: #95a5a6; color: white; }
+            .train-info { background: #f8f9fa; padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 4px solid #3498db; }
+            .line-western { border-left-color: #FF6B35 !important; }
+            .line-central { border-left-color: #4ECDC4 !important; }
+            .line-trans { border-left-color: #96CEB4 !important; }
+            .legend { background: #34495e; color: white; padding: 20px; border-radius: 10px; margin-top: 20px; }
+            h1 { color: #2c3e50; margin: 0; font-size: 2.5em; }
+            h2 { color: #2c3e50; margin-top: 0; }
+            .subtitle { color: #7f8c8d; font-size: 1.2em; margin: 10px 0; }
+            
+            /* Train Schedule Table Styles */
+            #train-schedule-table { border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+            #train-schedule-table th { font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+            #train-schedule-table td { border: 1px solid #eee; }
+            #train-schedule-table tbody tr:hover { background-color: #f8f9fa !important; }
+            .status-ontime { color: #27ae60; font-weight: 500; }
+            .status-delayed { color: #f39c12; font-weight: 500; }
+            .status-critical { color: #e74c3c; font-weight: 600; }
+            .line-western td:first-child::before { content: "🟠"; margin-right: 5px; }
+            .line-central td:first-child::before { content: "🔵"; margin-right: 5px; }
+            .line-trans td:first-child::before { content: "🟢"; margin-right: 5px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🚂 Mumbai Railway Live Simulation</h1>
+                <p class="subtitle">Real-time train movements and network performance monitoring</p>
+                <p><strong>Live Demo:</strong> Watch trains move across Mumbai's suburban railway network</p>
+            </div>
+            
+            <div class="main-content">
+                <div class="map-section">
+                    <h2>🗺️ Live Network Map</h2>
+                    <div id="map"></div>
+                </div>
+                
+                <div class="controls-section">
+                    <h2>📊 Live Simulation</h2>
+                    
+                    <button class="control-btn" onclick="startSimulation()" style="opacity: 0.5;" disabled>▶️ Start Simulation</button>
+                    <button class="control-btn" onclick="stopSimulation()">⏹️ Stop Simulation</button>
+                    <button class="control-btn" onclick="addRushHour()">🚶‍♂️ Add Rush Hour</button>
+                    <button class="control-btn" onclick="addWeather()">🌧️ Add Rain Delay</button>
+                    
+                    <div class="simulation-status status-stopped" id="status">
+                        🔴 Simulation Stopped
+                    </div>
+                    
+                    <div class="metric">
+                        <h3>Active Trains</h3>
+                        <div class="value" id="train-count">0</div>
+                    </div>
+                    
+                    <div class="metric">
+                        <h3>Passengers Served</h3>
+                        <div class="value" id="passenger-count">0</div>
+                    </div>
+                    
+                    <div class="metric">
+                        <h3>Network Efficiency</h3>
+                        <div class="value" id="efficiency">100%</div>
+                    </div>
+                    
+                    <div class="metric">
+                        <h3>Average Delay</h3>
+                        <div class="value" id="avg-delay">0.0 min</div>
+                    </div>
+                    
+                    <h3>🚂 Active Trains</h3>
+                    <div id="train-list">
+                        <p style="text-align: center; color: #7f8c8d;">No trains running</p>
+                    </div>
+                    
+                    <div class="legend">
+                        <h4>🎯 Simulation Features</h4>
+                        <p>• Real-time train positioning</p>
+                        <p>• Live passenger flow tracking</p>
+                        <p>• Dynamic delay simulation</p>
+                        <p>• Factor-based testing</p>
+                        <p>• Performance optimization</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Train Schedule Table Section -->
+            <div style="background: rgba(255,255,255,0.95); padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); margin-top: 20px;">
+                <h2>🕐 Live Train Schedule & Positions</h2>
+                <p style="color: #7f8c8d; margin-bottom: 20px;">Real-time tracking of all trains with current positions, timing, and passenger information</p>
+                
+                <div style="overflow-x: auto;">
+                    <table id="train-schedule-table" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                        <thead>
+                            <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Train ID</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Line</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Direction</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Current Station</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Next Station</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">ETA</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Passengers</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Delay</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="schedule-tbody">
+                            <tr>
+                                <td colspan="9" style="padding: 20px; text-align: center; color: #7f8c8d;">No trains currently running - Start simulation to see live data</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #3498db;">
+                    <h4 style="margin: 0 0 10px 0; color: #2c3e50;">📋 Schedule Information</h4>
+                    <p style="margin: 5px 0; font-size: 13px; color: #5a6c7d;">• <strong>ETA:</strong> Estimated time of arrival at next station</p>
+                    <p style="margin: 5px 0; font-size: 13px; color: #5a6c7d;">• <strong>Status:</strong> On Time (≤3min delay) | Delayed (>3min delay) | Critical (>10min delay)</p>
+                    <p style="margin: 5px 0; font-size: 13px; color: #5a6c7d;">• <strong>Updates:</strong> Table refreshes every 2 seconds with live simulation data</p>
+                </div>
+            </div>
+            
+            <!-- Live Train Tracking Section -->
+            <div style="background: rgba(255,255,255,0.95); padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); margin-top: 20px;">
+                <h2>🚂 Live Train Tracking & Position Details</h2>
+                <p style="color: #7f8c8d; margin-bottom: 20px;">Real-time individual train tracking with precise position and movement details</p>
+                
+                <!-- Tracking Controls -->
+                <div style="margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                    <label style="font-size: 14px; color: #2c3e50; display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="auto-follow" checked style="margin: 0;"> Auto-follow trains
+                    </label>
+                    <label style="font-size: 14px; color: #2c3e50; display: flex; align-items: center; gap: 5px;">
+                        Update Speed: 
+                        <select id="tracking-speed" style="margin-left: 5px; padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="500">Very Fast (0.5s)</option>
+                            <option value="1000" selected>Fast (1s)</option>
+                            <option value="2000">Normal (2s)</option>
+                            <option value="3000">Slow (3s)</option>
+                            <option value="5000">Very Slow (5s)</option>
+                        </select>
+                    </label>
+                    <button onclick="toggleTrackingPause()" id="tracking-pause-btn" style="padding: 6px 12px; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                        ⏸️ Pause Tracking
+                    </button>
+                </div>
+                
+                <!-- Individual Train Tracking Container -->
+                <div id="train-tracking-container" style="max-height: 500px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 8px; background: #fafafa;">
+                    <div style="padding: 40px; text-align: center; color: #7f8c8d;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">🚂</div>
+                        <div style="font-size: 16px; font-weight: bold;">Start simulation to see live train tracking...</div>
+                        <div style="font-size: 14px; margin-top: 5px;">Individual trains will appear here with detailed position tracking</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Delay Analysis Section -->
+            <div style="background: rgba(255,255,255,0.95); padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); margin-top: 20px;">
+                <h2>🚨 Delay Analysis & Root Causes</h2>
+                <p style="color: #7f8c8d; margin-bottom: 20px;">Real-time analysis of delay causes and their impact on network performance</p>
+                
+                <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+                    <!-- Active Disruptions -->
+                    <div style="flex: 1; background: #f8f9fa; padding: 20px; border-radius: 10px; border-left: 4px solid #e74c3c;">
+                        <h3 style="margin: 0 0 15px 0; color: #2c3e50;">🔴 Active Disruptions</h3>
+                        <div id="active-disruptions">
+                            <p style="color: #7f8c8d; text-align: center;">No active disruptions - Network operating normally</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Delay Statistics -->
+                    <div style="flex: 1; background: #f8f9fa; padding: 20px; border-radius: 10px; border-left: 4px solid #f39c12;">
+                        <h3 style="margin: 0 0 15px 0; color: #2c3e50;">📊 Delay Statistics</h3>
+                        <div id="delay-stats">
+                            <div style="margin: 8px 0;">
+                                <strong>Total Delayed Trains:</strong> <span id="delayed-count">0</span>
+                            </div>
+                            <div style="margin: 8px 0;">
+                                <strong>Average Delay:</strong> <span id="avg-network-delay">0.0 min</span>
+                            </div>
+                            <div style="margin: 8px 0;">
+                                <strong>Worst Affected Line:</strong> <span id="worst-line">None</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Detailed Delay Breakdown -->
+                <div style="overflow-x: auto;">
+                    <table id="delay-analysis-table" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                        <thead>
+                            <tr style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white;">
+                                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Train ID</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Delay (min)</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Primary Cause</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Contributing Factors</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Impact Level</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Affected Passengers</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Recommended Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="delay-analysis-tbody">
+                            <tr>
+                                <td colspan="7" style="padding: 20px; text-align: center; color: #7f8c8d;">No delays currently detected - All trains operating on schedule</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div style="margin-top: 15px; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+                    <h4 style="margin: 0 0 10px 0; color: #856404;">⚠️ Delay Causes Reference</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; font-size: 13px;">
+                        <div><strong>🌧️ Weather:</strong> Rain, fog, extreme heat affecting operations</div>
+                        <div><strong>👥 Overcrowding:</strong> Rush hour passenger congestion</div>
+                        <div><strong>🔧 Technical:</strong> Signal failures, power issues, track problems</div>
+                        <div><strong>🚫 Incidents:</strong> Medical emergencies, security alerts</div>
+                        <div><strong>⚡ Infrastructure:</strong> Maintenance work, track repairs</div>
+                        <div><strong>🔗 Cascade:</strong> Delays caused by other delayed trains</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+            let map;
+            let trainMarkers = {};
+            let isSimulationRunning = false;
+            let simulationInterval;
+            let trainCount = 0;
+            let passengerCount = 0;
+            let currentTime = new Date();
+            currentTime.setHours(7, 0, 0, 0); // Start at 7 AM
+            
+            // Initialize map
+            function initMap() {
+                map = L.map('map').setView([19.0760, 72.8777], 11);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+                
+                // Line colors
+                const lineColors = {
+                    'Western': '#FF6B35',
+                    'Central Main': '#4ECDC4',
+                    'Trans-Harbour': '#96CEB4'
+                };
+                
+                // Add stations
+                const stations = [{"name": "Churchgate", "lat": 18.9322, "lon": 72.8264, "line": "Western"}, {"name": "Marine Lines", "lat": 18.9434, "lon": 72.8234, "line": "Western"}, {"name": "Charni Road", "lat": 18.9517, "lon": 72.8193, "line": "Western"}, {"name": "Grant Road", "lat": 18.9617, "lon": 72.8147, "line": "Western"}, {"name": "Mumbai Central", "lat": 18.9717, "lon": 72.8197, "line": "Western"}, {"name": "Mahalaxmi", "lat": 18.9827, "lon": 72.8197, "line": "Western"}, {"name": "Lower Parel", "lat": 18.9967, "lon": 72.8297, "line": "Western"}, {"name": "Dadar", "lat": 19.0177, "lon": 72.8434, "line": "Western"}, {"name": "Bandra", "lat": 19.0547, "lon": 72.8407, "line": "Western"}, {"name": "Andheri", "lat": 19.1197, "lon": 72.8464, "line": "Western"}, {"name": "CST", "lat": 18.9401, "lon": 72.8351, "line": "Central Main"}, {"name": "Masjid", "lat": 18.9511, "lon": 72.8431, "line": "Central Main"}, {"name": "Sandhurst Road", "lat": 18.9601, "lon": 72.8431, "line": "Central Main"}, {"name": "Byculla", "lat": 18.9751, "lon": 72.8331, "line": "Central Main"}, {"name": "Kurla", "lat": 19.0651, "lon": 72.8781, "line": "Central Main"}, {"name": "Ghatkopar", "lat": 19.0831, "lon": 72.9081, "line": "Central Main"}, {"name": "Thane", "lat": 19.1871, "lon": 72.9581, "line": "Central Main"}, {"name": "Panvel", "lat": 18.9887, "lon": 73.1107, "line": "Trans-Harbour"}, {"name": "Vashi", "lat": 19.0767, "lon": 72.9987, "line": "Trans-Harbour"}, {"name": "Belapur", "lat": 19.0167, "lon": 73.0367, "line": "Trans-Harbour"}];
+                stations.forEach(station => {
+                    const color = lineColors[station.line] || '#000000';
+                    L.circleMarker([station.lat, station.lon], {
+                        radius: 8,
+                        fillColor: color,
+                        color: '#000',
+                        weight: 2,
+                        fillOpacity: 0.8
+                    }).bindPopup(`
+                        <b>${station.name}</b><br>
+                        Line: ${station.line}<br>
+                        <small>Click trains for details</small>
+                    `).addTo(map);
+                });
+            }
+            
+            // Simulate train movements
+            function updateTrainPositions() {
+                if (!isSimulationRunning) return;
+                
+                // Clear existing trains
+                Object.values(trainMarkers).forEach(marker => map.removeLayer(marker));
+                trainMarkers = {};
+                
+                const stations = [{"name": "Churchgate", "lat": 18.9322, "lon": 72.8264, "line": "Western"}, {"name": "Marine Lines", "lat": 18.9434, "lon": 72.8234, "line": "Western"}, {"name": "Charni Road", "lat": 18.9517, "lon": 72.8193, "line": "Western"}, {"name": "Grant Road", "lat": 18.9617, "lon": 72.8147, "line": "Western"}, {"name": "Mumbai Central", "lat": 18.9717, "lon": 72.8197, "line": "Western"}, {"name": "Mahalaxmi", "lat": 18.9827, "lon": 72.8197, "line": "Western"}, {"name": "Lower Parel", "lat": 18.9967, "lon": 72.8297, "line": "Western"}, {"name": "Dadar", "lat": 19.0177, "lon": 72.8434, "line": "Western"}, {"name": "Bandra", "lat": 19.0547, "lon": 72.8407, "line": "Western"}, {"name": "Andheri", "lat": 19.1197, "lon": 72.8464, "line": "Western"}, {"name": "CST", "lat": 18.9401, "lon": 72.8351, "line": "Central Main"}, {"name": "Masjid", "lat": 18.9511, "lon": 72.8431, "line": "Central Main"}, {"name": "Sandhurst Road", "lat": 18.9601, "lon": 72.8431, "line": "Central Main"}, {"name": "Byculla", "lat": 18.9751, "lon": 72.8331, "line": "Central Main"}, {"name": "Kurla", "lat": 19.0651, "lon": 72.8781, "line": "Central Main"}, {"name": "Ghatkopar", "lat": 19.0831, "lon": 72.9081, "line": "Central Main"}, {"name": "Thane", "lat": 19.1871, "lon": 72.9581, "line": "Central Main"}, {"name": "Panvel", "lat": 18.9887, "lon": 73.1107, "line": "Trans-Harbour"}, {"name": "Vashi", "lat": 19.0767, "lon": 72.9987, "line": "Trans-Harbour"}, {"name": "Belapur", "lat": 19.0167, "lon": 73.0367, "line": "Trans-Harbour"}];
+                const lines = ['Western', 'Central Main', 'Trans-Harbour'];
+                const trains = [];
+                
+                lines.forEach((line, lineIndex) => {
+                    const lineStations = stations.filter(s => s.line === line);
+                    
+                    // Create 3-5 trains per line
+                    for (let i = 0; i < 4; i++) {
+                        const trainId = `${line.charAt(0)}${String(i + 1).padStart(2, '0')}`;
+                        const progress = (Date.now() / 60000 + lineIndex * 20 + i * 15) % 60 / 60; // Different phases
+                        const direction = Math.floor(progress * 2) % 2 === 0 ? 'UP' : 'DOWN';
+                        
+                        if (lineStations.length >= 2) {
+                            let stationProgress = progress * (lineStations.length - 1);
+                            if (direction === 'DOWN') stationProgress = (lineStations.length - 1) - stationProgress;
+                            
+                            const stationIndex = Math.floor(stationProgress);
+                            const nextIndex = Math.min(stationIndex + 1, lineStations.length - 1);
+                            
+                            if (stationIndex < lineStations.length && nextIndex < lineStations.length) {
+                                const current = lineStations[stationIndex];
+                                const next = lineStations[nextIndex];
+                                const t = stationProgress - stationIndex;
+                                
+                                const lat = current.lat + t * (next.lat - current.lat);
+                                const lon = current.lon + t * (next.lon - current.lon);
+                                
+                                // Add some randomness for delay simulation
+                                const delay = Math.random() * 5;
+                                const passengers = Math.floor(Math.random() * 800 + 200);
+                                const status = delay > 3 ? 'Delayed' : 'On Time';
+                                
+                                const trainData = {
+                                    id: trainId,
+                                    line: line,
+                                    direction: direction,
+                                    current: current.name,
+                                    next: next.name,
+                                    passengers: passengers,
+                                    delay: delay,
+                                    status: status
+                                };
+                                
+                                trains.push(trainData);
+                                
+                                // Add train marker
+                                const marker = L.marker([lat, lon], {
+                                    icon: L.divIcon({
+                                        className: 'train-icon',
+                                        html: status === 'On Time' ? '🚂' : '🚃',
+                                        iconSize: [24, 24]
+                                    })
+                                }).bindPopup(`
+                                    <b>Train ${trainId}</b><br>
+                                    Line: ${line}<br>
+                                    Direction: ${direction}<br>
+                                    Current: ${current.name}<br>
+                                    Next: ${next.name}<br>
+                                    Passengers: ${passengers}<br>
+                                    Delay: ${delay.toFixed(1)} min<br>
+                                    Status: ${status}
+                                `).addTo(map);
+                                
+                                trainMarkers[trainId] = marker;
+                            }
+                        }
+                    }
+                });
+                
+                // Update metrics
+                trainCount = trains.length;
+                passengerCount += Math.floor(Math.random() * 100 + 50); // Simulate boarding
+                const avgDelay = trains.reduce((sum, t) => sum + t.delay, 0) / trains.length;
+                const efficiency = Math.max(60, 100 - avgDelay * 5);
+                
+                document.getElementById('train-count').textContent = trainCount;
+                document.getElementById('passenger-count').textContent = passengerCount.toLocaleString();
+                document.getElementById('efficiency').textContent = efficiency.toFixed(0) + '%';
+                document.getElementById('avg-delay').textContent = avgDelay.toFixed(1) + ' min';
+                
+                // Update train list
+                const trainListHTML = trains.map(train => `
+                    <div class="train-info line-${train.line.toLowerCase().replace(' ', '-')}">
+                        <strong>${train.id}</strong> (${train.line})<br>
+                        <small>${train.current} → ${train.next}</small><br>
+                        <small>👥 ${train.passengers} | ⏱️ ${train.delay.toFixed(1)}min</small>
+                    </div>
+                `).join('');
+                
+                document.getElementById('train-list').innerHTML = trainListHTML || '<p style="text-align: center; color: #7f8c8d;">No trains running</p>';
+                
+                // Update train schedule table
+                updateTrainScheduleTable(trains);
+                
+                // Update delay analysis
+                updateDelayAnalysis(trains);
+                
+                // Update time
+                currentTime.setMinutes(currentTime.getMinutes() + 1);
+            }
+            
+            function startSimulation() {
+                console.log('🚂 Start Simulation button clicked');
+                
+                // Check if map is initialized
+                if (!map) {
+                    console.error('❌ Map not initialized yet');
+                    alert('Please wait for the map to load completely, then try again.');
+                    return;
+                }
+                
+                console.log('✅ Map is ready, starting simulation');
+                
+                isSimulationRunning = true;
+                trainCount = 0;
+                passengerCount = 0;
+                detailedTrains = {}; // Reset detailed train data
+                
+                document.getElementById('status').className = 'simulation-status status-running';
+                document.getElementById('status').innerHTML = '🟢 Simulation Running';
+                
+                // Clear any existing intervals
+                if (simulationInterval) {
+                    clearInterval(simulationInterval);
+                }
+                if (trackingInterval) {
+                    clearInterval(trackingInterval);
+                }
+                
+                // Initialize train tracking
+                initializeTrainTracking();
+                
+                // Start the simulation loops
+                simulationInterval = setInterval(updateTrainPositions, 2000); // Update every 2 seconds
+                startTrainTracking(); // Start detailed tracking
+                
+                updateTrainPositions(); // Run immediately
+                
+                console.log('🚂 Simulation started - trains will move every 2 seconds');
+                console.log('🎯 Detailed tracking will update based on selected speed');
+            }
+            
+            function stopSimulation() {
+                isSimulationRunning = false;
+                
+                // Clear all intervals
+                if (simulationInterval) {
+                    clearInterval(simulationInterval);
+                }
+                if (trackingInterval) {
+                    clearInterval(trackingInterval);
+                }
+                
+                // Clear all trains
+                Object.values(trainMarkers).forEach(marker => map.removeLayer(marker));
+                trainMarkers = {};
+                detailedTrains = {}; // Clear detailed train data
+                
+                document.getElementById('status').className = 'simulation-status status-stopped';
+                document.getElementById('status').innerHTML = '🔴 Simulation Stopped';
+                document.getElementById('train-list').innerHTML = '<p style="text-align: center; color: #7f8c8d;">No trains running</p>';
+                
+                // Clear train schedule table
+                document.getElementById('schedule-tbody').innerHTML = '<tr><td colspan="9" style="padding: 20px; text-align: center; color: #7f8c8d;">No trains currently running - Start simulation to see live data</td></tr>';
+                
+                // Clear train tracking display
+                document.getElementById('train-tracking-container').innerHTML = `
+                    <div style="padding: 40px; text-align: center; color: #7f8c8d;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">🚂</div>
+                        <div style="font-size: 16px; font-weight: bold;">Start simulation to see live train tracking...</div>
+                        <div style="font-size: 14px; margin-top: 5px;">Individual trains will appear here with detailed position tracking</div>
+                    </div>
+                `;
+                
+                // Reset metrics
+                document.getElementById('train-count').textContent = '0';
+                document.getElementById('efficiency').textContent = '100%';
+                document.getElementById('avg-delay').textContent = '0.0 min';
+                
+                console.log('⏹️ Simulation stopped');
+            }
+            
+            function addRushHour() {
+                if (isSimulationRunning) {
+                    // Simulate rush hour by adding more passengers
+                    passengerCount += Math.floor(Math.random() * 2000 + 1000);
+                    console.log('🚶‍♂️ Rush hour activated - increased passenger demand');
+                }
+            }
+            
+            function addWeather() {
+                if (isSimulationRunning) {
+                    // Simulate weather delays
+                    console.log('🌧️ Weather disruption activated - trains may experience delays');
+                }
+            }
+            
+            function updateTrainScheduleTable(trains) {
+                const tbody = document.getElementById('schedule-tbody');
+                
+                if (!trains || trains.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="padding: 20px; text-align: center; color: #7f8c8d;">No trains currently running</td></tr>';
+                    return;
+                }
+                
+                // Sort trains by line and then by ID for consistent display
+                trains.sort((a, b) => {
+                    if (a.line !== b.line) return a.line.localeCompare(b.line);
+                    return a.id.localeCompare(b.id);
+                });
+                
+                const tableHTML = trains.map(train => {
+                    // Calculate ETA to next station (simulated)
+                    const baseETA = Math.floor(Math.random() * 8 + 2); // 2-10 minutes
+                    const adjustedETA = baseETA + train.delay;
+                    const etaString = `${Math.floor(adjustedETA)}:${String(Math.floor((adjustedETA % 1) * 60)).padStart(2, '0')}`;
+                    
+                    // Determine status and color coding
+                    let statusClass = '';
+                    let statusText = '';
+                    if (train.delay <= 3) {
+                        statusClass = 'status-ontime';
+                        statusText = '🟢 On Time';
+                    } else if (train.delay <= 10) {
+                        statusClass = 'status-delayed';
+                        statusText = '🟡 Delayed';
+                    } else {
+                        statusClass = 'status-critical';
+                        statusText = '🔴 Critical';
+                    }
+                    
+                    // Line color coding
+                    let lineClass = '';
+                    if (train.line === 'Western') lineClass = 'line-western';
+                    else if (train.line === 'Central Main') lineClass = 'line-central';
+                    else if (train.line === 'Trans-Harbour') lineClass = 'line-trans';
+                    
+                    return `
+                        <tr class="${lineClass}" style="border-bottom: 1px solid #eee; transition: background-color 0.3s;">
+                            <td style="padding: 10px; font-weight: bold; color: #2c3e50;">${train.id}</td>
+                            <td style="padding: 10px;">
+                                <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; color: white; background: ${getLineColor(train.line)};">
+                                    ${train.line}
+                                </span>
+                            </td>
+                            <td style="padding: 10px;">
+                                <span style="padding: 2px 6px; border-radius: 3px; font-size: 11px; background: #ecf0f1; color: #2c3e50;">
+                                    ${train.direction}
+                                </span>
+                            </td>
+                            <td style="padding: 10px; font-weight: 500;">${train.current}</td>
+                            <td style="padding: 10px; color: #7f8c8d;">${train.next}</td>
+                            <td style="padding: 10px; font-family: monospace; font-weight: bold;">${etaString} min</td>
+                            <td style="padding: 10px; text-align: center;">
+                                <span style="padding: 2px 6px; border-radius: 3px; font-size: 12px; background: #3498db; color: white;">
+                                    ${train.passengers}
+                                </span>
+                            </td>
+                            <td style="padding: 10px; text-align: center;">
+                                <span style="font-family: monospace; ${train.delay > 3 ? 'color: #e74c3c; font-weight: bold;' : 'color: #27ae60;'}">
+                                    ${train.delay.toFixed(1)}m
+                                </span>
+                            </td>
+                            <td style="padding: 10px; text-align: center;">
+                                <span class="${statusClass}" style="font-size: 12px;">
+                                    ${statusText}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+                
+                tbody.innerHTML = tableHTML;
+                
+                // Add hover effects with JavaScript
+                tbody.querySelectorAll('tr').forEach(row => {
+                    row.addEventListener('mouseenter', function() {
+                        this.style.backgroundColor = '#f8f9fa';
+                    });
+                    row.addEventListener('mouseleave', function() {
+                        this.style.backgroundColor = 'transparent';
+                    });
+                });
+            }
+            
+            function getLineColor(line) {
+                const colors = {
+                    'Western': '#FF6B35',
+                    'Central Main': '#4ECDC4',
+                    'Trans-Harbour': '#96CEB4'
+                };
+                return colors[line] || '#34495e';
+            }
+            
+            function updateDelayAnalysis(trains) {
+                // Analyze delays and their causes
+                const delayedTrains = trains.filter(train => train.delay > 0.5); // Consider 0.5+ minutes as delayed
+                const totalDelayed = delayedTrains.length;
+                const avgDelay = delayedTrains.length > 0 ? 
+                    delayedTrains.reduce((sum, train) => sum + train.delay, 0) / delayedTrains.length : 0;
+                
+                // Analyze by line
+                const lineDelays = {};
+                delayedTrains.forEach(train => {
+                    if (!lineDelays[train.line]) {
+                        lineDelays[train.line] = { count: 0, totalDelay: 0 };
+                    }
+                    lineDelays[train.line].count++;
+                    lineDelays[train.line].totalDelay += train.delay;
+                });
+                
+                const worstLine = Object.keys(lineDelays).reduce((worst, line) => {
+                    const avgLineDelay = lineDelays[line].totalDelay / lineDelays[line].count;
+                    if (!worst || avgLineDelay > (lineDelays[worst].totalDelay / lineDelays[worst].count)) {
+                        return line;
+                    }
+                    return worst;
+                }, null);
+                
+                // Update delay statistics
+                document.getElementById('delayed-count').textContent = totalDelayed;
+                document.getElementById('avg-network-delay').textContent = avgDelay.toFixed(1) + ' min';
+                document.getElementById('worst-line').textContent = worstLine || 'None';
+                
+                // Generate active disruptions
+                updateActiveDisruptions(delayedTrains);
+                
+                // Update delay analysis table
+                updateDelayAnalysisTable(delayedTrains);
+            }
+            
+            function updateActiveDisruptions(delayedTrains) {
+                const disruptionsDiv = document.getElementById('active-disruptions');
+                
+                if (delayedTrains.length === 0) {
+                    disruptionsDiv.innerHTML = '<p style="color: #27ae60; text-align: center;">✅ No active disruptions - Network operating normally</p>';
+                    return;
+                }
+                
+                // Simulate different types of disruptions based on delay patterns
+                const disruptions = [];
+                
+                // Check for weather-related delays (affects multiple trains)
+                const heavyDelays = delayedTrains.filter(t => t.delay > 8);
+                if (heavyDelays.length > 2) {
+                    disruptions.push({
+                        type: '🌧️ Weather Impact',
+                        description: 'Heavy rain affecting multiple lines',
+                        severity: 'High',
+                        affected: heavyDelays.length
+                    });
+                }
+                
+                // Check for rush hour congestion
+                const currentHour = currentTime.getHours();
+                if ((currentHour >= 8 && currentHour <= 10) || (currentHour >= 17 && currentHour <= 19)) {
+                    const rushhourDelays = delayedTrains.filter(t => t.delay > 3 && t.delay <= 8);
+                    if (rushhourDelays.length > 0) {
+                        disruptions.push({
+                            type: '👥 Rush Hour Congestion',
+                            description: 'Peak hour passenger overcrowding',
+                            severity: 'Medium',
+                            affected: rushhourDelays.length
+                        });
+                    }
+                }
+                
+                // Check for technical issues (high delays on specific trains)
+                const technicalIssues = delayedTrains.filter(t => t.delay > 15);
+                if (technicalIssues.length > 0) {
+                    disruptions.push({
+                        type: '⚡ Technical Failure',
+                        description: 'Signal/power system issues detected',
+                        severity: 'Critical',
+                        affected: technicalIssues.length
+                    });
+                }
+                
+                // Check for cascade delays (moderate delays affecting multiple trains)
+                const cascadeDelays = delayedTrains.filter(t => t.delay > 2 && t.delay <= 6);
+                if (cascadeDelays.length > 3) {
+                    disruptions.push({
+                        type: '🔗 Cascade Delays',
+                        description: 'Delays propagating through network',
+                        severity: 'Medium',
+                        affected: cascadeDelays.length
+                    });
+                }
+                
+                if (disruptions.length === 0) {
+                    disruptions.push({
+                        type: '⚠️ Minor Delays',
+                        description: 'Isolated service delays detected',
+                        severity: 'Low',
+                        affected: delayedTrains.length
+                    });
+                }
+                
+                const disruptionHTML = disruptions.map(d => {
+                    const severityColor = d.severity === 'Critical' ? '#e74c3c' : 
+                                        d.severity === 'High' ? '#f39c12' :
+                                        d.severity === 'Medium' ? '#f1c40f' : '#3498db';
+                    
+                    return `
+                        <div style="margin: 10px 0; padding: 12px; background: white; border-radius: 6px; border-left: 4px solid ${severityColor};">
+                            <div style="font-weight: bold; color: #2c3e50;">${d.type}</div>
+                            <div style="font-size: 13px; color: #7f8c8d; margin: 4px 0;">${d.description}</div>
+                            <div style="font-size: 12px;">
+                                <span style="background: ${severityColor}; color: white; padding: 2px 6px; border-radius: 3px; margin-right: 8px;">
+                                    ${d.severity}
+                                </span>
+                                <span style="color: #5a6c7d;">${d.affected} trains affected</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                disruptionsDiv.innerHTML = disruptionHTML;
+            }
+            
+            function updateDelayAnalysisTable(delayedTrains) {
+                const tbody = document.getElementById('delay-analysis-tbody');
+                
+                if (delayedTrains.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="padding: 20px; text-align: center; color: #27ae60;">✅ No delays currently detected - All trains operating on schedule</td></tr>';
+                    return;
+                }
+                
+                // Sort by delay (highest first)
+                delayedTrains.sort((a, b) => b.delay - a.delay);
+                
+                const analysisHTML = delayedTrains.map(train => {
+                    // Determine primary cause based on delay characteristics
+                    let primaryCause = '';
+                    let contributingFactors = [];
+                    let impactLevel = '';
+                    let recommendedAction = '';
+                    
+                    if (train.delay > 15) {
+                        primaryCause = '⚡ Technical Failure';
+                        contributingFactors = ['Signal malfunction', 'Power issues'];
+                        impactLevel = '🔴 Critical';
+                        recommendedAction = 'Immediate technical intervention';
+                    } else if (train.delay > 8) {
+                        primaryCause = '🌧️ Weather Impact';
+                        contributingFactors = ['Reduced visibility', 'Track conditions'];
+                        impactLevel = '🟠 High';
+                        recommendedAction = 'Reduce speed, increase safety margins';
+                    } else if (train.delay > 5) {
+                        primaryCause = '👥 Passenger Overcrowding';
+                        contributingFactors = ['Extended boarding time', 'Platform congestion'];
+                        impactLevel = '🟡 Medium';
+                        recommendedAction = 'Deploy crowd control, extra staff';
+                    } else if (train.delay > 2) {
+                        primaryCause = '🔗 Cascade Effect';
+                        contributingFactors = ['Upstream delays', 'Schedule disruption'];
+                        impactLevel = '🟡 Medium';
+                        recommendedAction = 'Adjust schedule, reroute if possible';
+                    } else {
+                        primaryCause = '🚫 Minor Incident';
+                        contributingFactors = ['Door issues', 'Passenger incident'];
+                        impactLevel = '🟢 Low';
+                        recommendedAction = 'Monitor, resolve quickly';
+                    }
+                    
+                    const affectedPassengers = Math.floor(train.passengers * (1 + train.delay / 10));
+                    
+                    return `
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 10px; font-weight: bold; color: #2c3e50;">${train.id}</td>
+                            <td style="padding: 10px; text-align: center;">
+                                <span style="font-family: monospace; font-weight: bold; color: #e74c3c; font-size: 16px;">
+                                    ${train.delay.toFixed(1)}
+                                </span>
+                            </td>
+                            <td style="padding: 10px;">${primaryCause}</td>
+                            <td style="padding: 10px; font-size: 12px; color: #7f8c8d;">
+                                ${contributingFactors.join(', ')}
+                            </td>
+                            <td style="padding: 10px; text-align: center;">${impactLevel}</td>
+                            <td style="padding: 10px; text-align: center;">
+                                <span style="color: #e74c3c; font-weight: bold;">${affectedPassengers}</span>
+                            </td>
+                            <td style="padding: 10px; font-size: 12px; color: #2c3e50;">
+                                <strong>${recommendedAction}</strong>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+                
+                tbody.innerHTML = analysisHTML;
+            }
+            
+            // Live Train Tracking Variables
+            let trackingInterval;
+            let trackingPaused = false;
+            let trackingSpeed = 1000; // Default 1 second
+            let detailedTrains = {};
+            
+            function initializeTrainTracking() {
+                // Set up tracking speed listener
+                document.getElementById('tracking-speed').addEventListener('change', function(e) {
+                    trackingSpeed = parseInt(e.target.value);
+                    if (trackingInterval && !trackingPaused) {
+                        clearInterval(trackingInterval);
+                        startTrainTracking();
+                    }
+                });
+            }
+            
+            function startTrainTracking() {
+                if (trackingInterval) {
+                    clearInterval(trackingInterval);
+                }
+                
+                if (!trackingPaused) {
+                    trackingInterval = setInterval(updateDetailedTrainPositions, trackingSpeed);
+                }
+            }
+            
+            function toggleTrackingPause() {
+                trackingPaused = !trackingPaused;
+                const btn = document.getElementById('tracking-pause-btn');
+                
+                if (trackingPaused) {
+                    btn.textContent = '▶️ Resume Tracking';
+                    btn.style.background = '#27ae60';
+                    if (trackingInterval) {
+                        clearInterval(trackingInterval);
+                    }
+                } else {
+                    btn.textContent = '⏸️ Pause Tracking';
+                    btn.style.background = '#f39c12';
+                    startTrainTracking();
+                }
+            }
+            
+            function updateDetailedTrainPositions() {
+                if (!isSimulationRunning) return;
+                
+                // Generate detailed train data with granular positions
+                const detailedTrainData = generateDetailedTrainData();
+                updateTrainTrackingDisplay(detailedTrainData);
+            }
+            
+            function generateDetailedTrainData() {
+                const trains = [];
+                const lines = ['Western', 'Central Main', 'Trans-Harbour'];
+                const time = new Date();
+                
+                for (let i = 0; i < trainCount; i++) {
+                    const trainId = `T${String(i + 1).padStart(3, '0')}`;
+                    const line = lines[i % lines.length];
+                    
+                    // Initialize train if not exists
+                    if (!detailedTrains[trainId]) {
+                        detailedTrains[trainId] = {
+                            id: trainId,
+                            line: line,
+                            startStation: getRandomStation(line),
+                            currentSegment: 0,
+                            positionInSegment: Math.random(), // 0-1 position between stations
+                            speed: 45 + Math.random() * 20, // 45-65 km/h
+                            passengers: Math.floor(Math.random() * 800 + 200),
+                            delay: Math.random() * 8,
+                            startTime: new Date(time.getTime() - Math.random() * 3600000), // Started within last hour
+                            nextStation: '',
+                            distanceToNext: 0,
+                            eta: new Date(),
+                            status: 'In Transit'
+                        };
+                    }
+                    
+                    const train = detailedTrains[trainId];
+                    
+                    // Update train position
+                    updateTrainPosition(train);
+                    
+                    trains.push(train);
+                }
+                
+                return trains;
+            }
+            
+            function updateTrainPosition(train) {
+                const stations = getStationsForLine(train.line);
+                
+                // Move train along its route
+                train.positionInSegment += (train.speed / 3600) * (trackingSpeed / 1000); // Speed conversion
+                
+                // Add some realistic speed variation
+                train.speed += (Math.random() - 0.5) * 2;
+                train.speed = Math.max(30, Math.min(70, train.speed)); // Keep between 30-70 km/h
+                
+                // Check if train reached next station
+                if (train.positionInSegment >= 1) {
+                    train.currentSegment = (train.currentSegment + 1) % (stations.length - 1);
+                    train.positionInSegment = 0;
+                    
+                    // Add station dwell time simulation
+                    if (Math.random() < 0.3) { // 30% chance of delay at station
+                        train.delay += Math.random() * 2;
+                    }
+                }
+                
+                // Calculate current position details
+                const currentStationIndex = train.currentSegment;
+                const nextStationIndex = (train.currentSegment + 1) % stations.length;
+                
+                train.currentStation = stations[currentStationIndex];
+                train.nextStation = stations[nextStationIndex];
+                
+                // Calculate distance to next station (assuming 2-3km between stations)
+                const segmentDistance = 2.5; // km
+                train.distanceToNext = segmentDistance * (1 - train.positionInSegment);
+                
+                // Calculate ETA
+                const timeToNext = (train.distanceToNext / train.speed) * 60; // minutes
+                train.eta = new Date(Date.now() + timeToNext * 60000);
+                
+                // Update status based on delay
+                if (train.delay < 2) {
+                    train.status = 'On Time';
+                } else if (train.delay < 5) {
+                    train.status = 'Minor Delay';
+                } else if (train.delay < 10) {
+                    train.status = 'Delayed';
+                } else {
+                    train.status = 'Major Delay';
+                }
+            }
+            
+            function getStationsForLine(line) {
+                const stations = {
+                    'Western': ['Churchgate', 'Marine Lines', 'Charni Road', 'Grant Road', 'Mumbai Central', 'Mahalaxmi', 'Lower Parel', 'Elphinstone Road', 'Dadar', 'Bandra'],
+                    'Central Main': ['CST', 'Masjid Bunder', 'Sandhurst Road', 'Byculla', 'Chinchpokli', 'Currey Road', 'Parel', 'Dadar', 'Matunga Road', 'Sion'],
+                    'Trans-Harbour': ['Thane', 'Airoli', 'Rabale', 'Ghansoli', 'Kopar Khairane', 'Turbhe', 'Sanpada', 'Juinagar', 'Nerul', 'Seawoods']
+                };
+                return stations[line] || stations['Western'];
+            }
+            
+            function getRandomStation(line) {
+                const stations = getStationsForLine(line);
+                return stations[Math.floor(Math.random() * stations.length)];
+            }
+            
+            function updateTrainTrackingDisplay(trains) {
+                const container = document.getElementById('train-tracking-container');
+                
+                if (trains.length === 0) {
+                    container.innerHTML = `
+                        <div style="padding: 40px; text-align: center; color: #7f8c8d;">
+                            <div style="font-size: 48px; margin-bottom: 10px;">🚂</div>
+                            <div style="font-size: 16px; font-weight: bold;">No trains currently running</div>
+                            <div style="font-size: 14px; margin-top: 5px;">Start simulation to see live train tracking</div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const trackingHTML = trains.map(train => {
+                    const statusColor = getStatusColor(train.status);
+                    const lineColor = getLineColor(train.line);
+                    
+                    // Create progress bar for position between stations
+                    const progressPercent = train.positionInSegment * 100;
+                    
+                    return `
+                        <div style="margin: 15px; padding: 20px; background: white; border-radius: 10px; border-left: 5px solid ${lineColor}; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                            <!-- Train Header -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                <div>
+                                    <span style="font-size: 18px; font-weight: bold; color: #2c3e50;">${train.id}</span>
+                                    <span style="background: ${lineColor}; color: white; padding: 3px 8px; border-radius: 15px; font-size: 12px; margin-left: 10px;">
+                                        ${train.line}
+                                    </span>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 14px; font-weight: bold; color: ${statusColor};">${train.status}</div>
+                                    <div style="font-size: 12px; color: #7f8c8d;">Started: ${train.startTime.toLocaleTimeString()}</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Position Tracking Line -->
+                            <div style="margin: 15px 0;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 13px; font-weight: bold; color: #27ae60;">${train.currentStation}</span>
+                                    <span style="font-size: 13px; color: #7f8c8d;">Progress to next station</span>
+                                    <span style="font-size: 13px; font-weight: bold; color: #e74c3c;">${train.nextStation}</span>
+                                </div>
+                                
+                                <!-- Progress Bar -->
+                                <div style="position: relative; height: 8px; background: #ecf0f1; border-radius: 10px; overflow: hidden;">
+                                    <div style="height: 100%; background: linear-gradient(90deg, ${lineColor}, #27ae60); width: ${progressPercent}%; transition: width 0.5s ease;"></div>
+                                    <!-- Train Icon -->
+                                    <div style="position: absolute; top: -8px; left: ${progressPercent}%; transform: translateX(-50%); font-size: 20px; filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3));">
+                                        🚂
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Detailed Information Grid -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px; margin-top: 15px;">
+                                <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+                                    <div style="font-size: 18px; font-weight: bold; color: #3498db;">${train.speed.toFixed(1)}</div>
+                                    <div style="font-size: 11px; color: #7f8c8d;">km/h</div>
+                                </div>
+                                <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+                                    <div style="font-size: 18px; font-weight: bold; color: #e67e22;">${train.distanceToNext.toFixed(2)}</div>
+                                    <div style="font-size: 11px; color: #7f8c8d;">km to next</div>
+                                </div>
+                                <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+                                    <div style="font-size: 16px; font-weight: bold; color: #27ae60;">${train.eta.toLocaleTimeString().slice(0,5)}</div>
+                                    <div style="font-size: 11px; color: #7f8c8d;">ETA</div>
+                                </div>
+                                <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+                                    <div style="font-size: 18px; font-weight: bold; color: #9b59b6;">${train.passengers}</div>
+                                    <div style="font-size: 11px; color: #7f8c8d;">passengers</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Additional Details -->
+                            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #ecf0f1; display: flex; justify-content: space-between; font-size: 12px; color: #7f8c8d;">
+                                <span>Delay: <strong style="color: ${train.delay > 5 ? '#e74c3c' : '#27ae60'};">${train.delay.toFixed(1)} min</strong></span>
+                                <span>Journey: ${train.startStation} → ${train.nextStation}</span>
+                                <span>Last Update: ${new Date().toLocaleTimeString()}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                container.innerHTML = trackingHTML;
+            }
+            
+            function getStatusColor(status) {
+                const colors = {
+                    'On Time': '#27ae60',
+                    'Minor Delay': '#f39c12',
+                    'Delayed': '#e67e22',
+                    'Major Delay': '#e74c3c'
+                };
+                return colors[status] || '#7f8c8d';
+            }
+            
+            // Initialize everything when page loads
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('🚀 DOM loaded, initializing map...');
+                
+                // Add a small delay to ensure Leaflet is fully loaded
+                setTimeout(() => {
+                    try {
+                        initMap();
+                        console.log('✅ Mumbai Railway Live Demo initialized');
+                        console.log('🎯 Click "Start Simulation" to see trains moving in real-time!');
+                        
+                        // Enable the start button
+                        const startBtn = document.querySelector('button[onclick="startSimulation()"]');
+                        if (startBtn) {
+                            startBtn.style.opacity = '1';
+                            startBtn.disabled = false;
+                        }
+                    } catch (error) {
+                        console.error('❌ Map initialization failed:', error);
+                        alert('Map failed to load. Please refresh the page.');
+                    }
+                }, 1000);
+            });
+        </script>
+    </body>
+    </html>
+    
