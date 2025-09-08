@@ -111,6 +111,58 @@
                 0%, 100% { opacity: 1; }
                 50% { opacity: 0.7; }
             }
+            
+            /* Quick Action Button Styles */
+            .quick-action-btn {
+                background: #3498db;
+                color: white;
+                border: none;
+                padding: 6px 10px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 10px;
+                margin: 2px;
+                transition: all 0.3s;
+                display: block;
+                width: 100%;
+                text-align: left;
+            }
+            
+            .quick-action-btn:hover {
+                background: #2980b9;
+                transform: translateX(2px);
+            }
+            
+            .quick-action-btn:active {
+                transform: scale(0.98);
+            }
+            
+            /* Conflict Alert Animations */
+            @keyframes conflictAlert {
+                0%, 100% { border-left: 4px solid #e74c3c; }
+                50% { border-left: 4px solid #f39c12; }
+            }
+            
+            .conflict-item {
+                animation: conflictAlert 2s infinite;
+            }
+            
+            /* Junction Priority Highlighting */
+            .priority-item {
+                transition: all 0.3s ease;
+            }
+            
+            /* Selected train highlighting */
+            .selected-train {
+                animation: selectedPulse 1.5s infinite;
+                transform: scale(1.2);
+                z-index: 1001 !important;
+            }
+            
+            @keyframes selectedPulse {
+                0%, 100% { filter: drop-shadow(2px 2px 8px rgba(52, 152, 219, 0.8)); }
+                50% { filter: drop-shadow(2px 2px 12px rgba(52, 152, 219, 1.0)); }
+            }
         </style>
     </head>
     <body>
@@ -186,6 +238,61 @@
                         <p>• Performance optimization</p>
                     </div>
                     
+                    <!-- Who Goes First Panel -->
+                    <div class="legend" style="background: #2ecc71; margin-top: 15px;">
+                        <h4>⚡ Junction Priority Control</h4>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <button onclick="toggleAdvancedUpdates()" id="pause-advanced-btn" style="background: #e67e22; color: white; border: none; padding: 4px 8px; border-radius: 3px; font-size: 10px; cursor: pointer;">
+                                ⏸️ Pause Updates
+                            </button>
+                            <span style="font-size: 10px; color: #fff;">Updates every 15s</span>
+                        </div>
+                        <div id="junction-priority" style="font-size: 12px;">
+                            <p style="color: #fff; margin: 5px 0;">Next Junction: <strong id="next-junction">Dadar</strong></p>
+                            <div id="priority-order" style="margin: 8px 0;">
+                                <div style="background: rgba(255,255,255,0.2); padding: 6px; border-radius: 4px; margin: 3px 0;">
+                                    <span>Start simulation to see train priorities</span>
+                                </div>
+                            </div>
+                            <p style="font-size: 10px; color: #ecf0f1;">Total time saved: 0.0 minutes</p>
+                        </div>
+                    </div>
+
+                    <!-- Conflict Detector Panel -->
+                    <div class="legend" style="background: #e74c3c; margin-top: 15px;">
+                        <h4>🚨 Conflict Detection</h4>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="font-size: 10px; color: #fff;">Scanning 10-20min ahead</span>
+                            <button onclick="manualConflictScan()" style="background: #c0392b; color: white; border: none; padding: 4px 8px; border-radius: 3px; font-size: 10px; cursor: pointer;">
+                                🔍 Manual Scan
+                            </button>
+                        </div>
+                        <div id="conflict-alerts" style="font-size: 12px;">
+                            <div style="background: rgba(255,255,255,0.2); padding: 8px; border-radius: 4px; margin: 5px 0;">
+                                <div style="font-weight: bold;">Start simulation to detect conflicts</div>
+                                <div style="font-size: 11px;">Real-time monitoring will begin when simulation starts</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions Panel -->
+                    <div class="legend" style="background: #f39c12; margin-top: 15px;">
+                        <h4>⚡ Quick Actions</h4>
+                        <div id="quick-actions" style="font-size: 12px;">
+                            <div style="margin: 8px 0;">
+                                <strong>No train selected</strong>
+                                <div style="margin: 6px 0;">
+                                    <button disabled class="quick-action-btn" style="opacity: 0.5;">Hold 2min (+3min delay)</button>
+                                    <button disabled class="quick-action-btn" style="opacity: 0.5;">Swap Platform (saves 2min)</button>
+                                    <button disabled class="quick-action-btn" style="opacity: 0.5;">Loop Reroute (+8min)</button>
+                                </div>
+                                <div style="font-size: 10px; color: #fff; margin-top: 4px;" id="action-preview">
+                                    Click on a train in the priority list or map to select
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="legend" style="background: #2c3e50; margin-top: 15px;">
                         <h4>🗺️ Railway Network Map</h4>
                         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
@@ -245,7 +352,7 @@
                     <h4 style="margin: 0 0 10px 0; color: #2c3e50;">📋 Schedule Information</h4>
                     <p style="margin: 5px 0; font-size: 13px; color: #5a6c7d;">• <strong>ETA:</strong> Estimated time of arrival at next station</p>
                     <p style="margin: 5px 0; font-size: 13px; color: #5a6c7d;">• <strong>Status:</strong> On Time (≤3min delay) | Delayed (>3min delay) | Critical (>10min delay)</p>
-                    <p style="margin: 5px 0; font-size: 13px; color: #5a6c7d;">• <strong>Updates:</strong> Table refreshes every 2 seconds with live simulation data</p>
+                    <p style="margin: 5px 0; font-size: 13px; color: #5a6c7d;">• <strong>Updates:</strong> Table refreshes every 3 seconds for better readability</p>
                 </div>
             </div>
             
@@ -263,8 +370,8 @@
                         Update Speed: 
                         <select id="tracking-speed" style="margin-left: 5px; padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px;">
                             <option value="500">Very Fast (0.5s)</option>
-                            <option value="1000" selected>Fast (1s)</option>
-                            <option value="2000">Normal (2s)</option>
+                            <option value="1000">Fast (1s)</option>
+                            <option value="2000" selected>Normal (2s)</option>
                             <option value="3000">Slow (3s)</option>
                             <option value="5000">Very Slow (5s)</option>
                         </select>
@@ -356,6 +463,7 @@
             let trainMarkers = {};
             let isSimulationRunning = false;
             let simulationInterval;
+            let advancedSystemsInterval;
             let trainCount = 0;
             let passengerCount = 0;
             let currentTime = new Date();
@@ -604,8 +712,14 @@
                                 Passengers: ${train.passengers}<br>
                                 Delay: ${train.delay.toFixed(1)} min<br>
                                 Status: ${train.status}<br>
-                                Distance to Next: ${train.distanceToNext.toFixed(2)} km
+                                Distance to Next: ${train.distanceToNext.toFixed(2)} km<br>
+                                <button onclick="selectTrain('${train.id}')" style="background: #3498db; color: white; border: none; padding: 4px 8px; border-radius: 3px; margin-top: 4px; cursor: pointer;">Select for Quick Actions</button>
                             `).addTo(map);
+                            
+                            // Make marker clickable for selection
+                            marker.on('click', function() {
+                                selectTrain(train.id);
+                            });
                             
                             trainMarkers[train.id] = marker;
                         }
@@ -1040,21 +1154,21 @@
             }
             
             function startSimulation() {
-                console.log('🚂 Start Simulation button clicked');
+                console.log(' Start Simulation button clicked');
                 
-                // Check if map is initialized
+       
                 if (!map) {
-                    console.error('❌ Map not initialized yet');
+                    console.error(' Map not initialized yet');
                     alert('Please wait for the map to load completely, then try again.');
                     return;
                 }
                 
-                console.log('✅ Map is ready, starting simulation');
+                console.log(' Map is ready, starting simulation');
                 
                 isSimulationRunning = true;
                 trainCount = 0;
                 passengerCount = 0;
-                detailedTrains = {}; // Reset detailed train data
+                detailedTrains = {}; 
                 
                 document.getElementById('status').className = 'simulation-status status-running';
                 document.getElementById('status').innerHTML = '🟢 Simulation Running';
@@ -1071,10 +1185,14 @@
                 initializeTrainTracking();
                 
                 // Start the simulation loops
-                simulationInterval = setInterval(updateTrainPositions, 1000); // Update every 1 second for smooth path-following movement
+                simulationInterval = setInterval(updateTrainPositions, 2000); // Update every 2 seconds for more manageable updates
                 startTrainTracking(); // Start detailed tracking
                 
+                // Start advanced systems (Junction Priority, Conflict Detection, Quick Actions) - slower updates
+                advancedSystemsInterval = setInterval(updateAdvancedSystems, 15000); // Update every 15 seconds for better readability
+                
                 updateTrainPositions(); // Run immediately
+                updateAdvancedSystems(); // Initialize advanced systems
                 
                 console.log('🚂 Simulation started - trains will move every 2 seconds');
                 console.log('🎯 Detailed tracking will update based on selected speed');
@@ -1086,6 +1204,9 @@
                 // Clear all intervals
                 if (simulationInterval) {
                     clearInterval(simulationInterval);
+                }
+                if (advancedSystemsInterval) {
+                    clearInterval(advancedSystemsInterval);
                 }
                 if (trackingInterval) {
                     clearInterval(trackingInterval);
@@ -1121,6 +1242,13 @@
                 document.getElementById('train-count').textContent = '0';
                 document.getElementById('efficiency').textContent = '100%';
                 document.getElementById('avg-delay').textContent = '0.0 min';
+                
+                // Reset advanced systems
+                selectedTrain = null;
+                conflictResolutions = {};
+                document.getElementById('priority-order').innerHTML = '<div style="background: rgba(255,255,255,0.2); padding: 6px; border-radius: 4px;">No approaching trains</div>';
+                document.getElementById('conflict-alerts').innerHTML = '<div style="background: rgba(255,255,255,0.2); padding: 8px; border-radius: 4px;">✅ No conflicts detected</div>';
+                updateQuickActionsDisplay();
                 
                 console.log('⏹️ Simulation stopped - All multipliers reset for next run');
             }
@@ -1948,6 +2076,463 @@
                     }
                 }, 3000);
             });
+            
+            // ==================== ADVANCED CONTROL FEATURES ====================
+            
+            // Global variables for advanced features
+            let junctionConflicts = [];
+            let selectedTrain = null;
+            let conflictResolutions = {};
+            let advancedUpdatesPaused = false;
+            
+            // Junction Priority System
+            function updateJunctionPriority() {
+                if (advancedUpdatesPaused) return;
+                
+                const junctions = ['Dadar', 'Kurla', 'Thane', 'Bandra'];
+                // Use a slower rotation - change junction every 60 seconds instead of 30
+                const nextJunction = junctions[Math.floor(Date.now() / 60000) % junctions.length];
+                
+                // Get trains approaching this junction in next 5-10 minutes
+                const approachingTrains = Object.values(detailedTrains).filter(train => {
+                    const distanceToJunction = Math.random() * 15 + 5; // 5-20 km
+                    const timeToJunction = (distanceToJunction / (train.speed || 35)) * 60; // minutes
+                    return timeToJunction <= 15 && timeToJunction >= 2;
+                });
+                
+                // Sort by arrival time and priority factors
+                const priorityOrder = approachingTrains
+                    .sort((a, b) => {
+                        const aScore = calculatePriorityScore(a, nextJunction);
+                        const bScore = calculatePriorityScore(b, nextJunction);
+                        return bScore - aScore; // Higher score = higher priority
+                    })
+                    .slice(0, 3); // Show top 3
+                
+                document.getElementById('next-junction').textContent = nextJunction;
+                
+                const priorityHTML = priorityOrder.map((train, index) => {
+                    const reason = getPriorityReason(train, index);
+                    const timeSaved = Math.random() * 3 + 1; // 1-4 minutes
+                    return `
+                        <div class="priority-item" style="background: rgba(255,255,255,0.2); padding: 6px; border-radius: 4px; margin: 3px 0; cursor: pointer;" onclick="selectTrain('${train.id}')">
+                            <span>${index + 1}. ${train.id} → Platform ${index + 1} (${reason})</span>
+                        </div>
+                    `;
+                }).join('');
+                
+                const totalTimeSaved = priorityOrder.reduce((sum, _, index) => sum + (Math.random() * 2 + 0.5), 0);
+                
+                document.getElementById('priority-order').innerHTML = priorityHTML || 
+                    '<div style="background: rgba(255,255,255,0.2); padding: 6px; border-radius: 4px;">No approaching trains</div>';
+                
+                document.querySelector('#junction-priority p:last-child').innerHTML = 
+                    `Total time saved: ${totalTimeSaved.toFixed(1)} minutes`;
+            }
+            
+            function calculatePriorityScore(train, junction) {
+                let score = 0;
+                
+                // Delay factor - more delayed trains get lower priority
+                score -= train.delay * 2;
+                
+                // Passenger load factor - fuller trains get higher priority
+                if (train.passengers > 4000) score += 15;
+                else if (train.passengers > 3000) score += 10;
+                else if (train.passengers > 2000) score += 5;
+                
+                // Time efficiency - earlier arrival gets higher priority
+                const estimatedArrival = Math.random() * 10 + 2; // 2-12 minutes
+                score += (12 - estimatedArrival) * 2;
+                
+                // Line priority (simulate real Mumbai operations)
+                if (train.line === 'Western') score += 5; // Western line priority
+                if (train.line === 'Central Main') score += 3;
+                
+                return score;
+            }
+            
+            function getPriorityReason(train, index) {
+                const reasons = [
+                    `${(Math.random() * 3 + 1).toFixed(0)}min early`,
+                    `saves ${(Math.random() * 4 + 2).toFixed(0)}min`,
+                    `holds ${(Math.random() * 2 + 1).toFixed(0)}min`,
+                    'on schedule',
+                    'passenger priority',
+                    'line efficiency'
+                ];
+                return reasons[index] || reasons[Math.floor(Math.random() * reasons.length)];
+            }
+            
+            // Conflict Detection System
+            function updateConflictDetection() {
+                if (advancedUpdatesPaused) return;
+                
+                const currentTime = Date.now();
+                const conflicts = [];
+                
+                // Simulate track conflicts - but make them more stable
+                const activeTrains = Object.values(detailedTrains);
+                for (let i = 0; i < activeTrains.length - 1; i++) {
+                    for (let j = i + 1; j < activeTrains.length; j++) {
+                        const train1 = activeTrains[i];
+                        const train2 = activeTrains[j];
+                        
+                        if (detectConflict(train1, train2)) {
+                            const conflictTime = 10 + Math.random() * 15; // 10-25 minutes (more stable range)
+                            conflicts.push({
+                                id: `conflict_${train1.id}_${train2.id}`,
+                                type: getConflictType(),
+                                trains: [train1.id, train2.id],
+                                location: getConflictLocation(train1, train2),
+                                timeToConflict: conflictTime,
+                                severity: getConflictSeverity(conflictTime)
+                            });
+                        }
+                    }
+                    
+                    if (conflicts.length >= 2) break; // Limit to 2 conflicts for better readability
+                }
+                
+                // Add stable demo conflicts if none detected
+                if (conflicts.length < 2) {
+                    const baseTime = Math.floor(Date.now() / 30000) * 30000; // Stable 30-second intervals
+                    const availableTrains = Object.keys(detailedTrains);
+                    
+                    // Use actual train IDs from the simulation
+                    const westernTrains = availableTrains.filter(id => id.startsWith('W'));
+                    const centralTrains = availableTrains.filter(id => id.startsWith('C'));
+                    const transTrains = availableTrains.filter(id => id.startsWith('T'));
+                    
+                    if (westernTrains.length >= 1 && centralTrains.length >= 1) {
+                        conflicts.push({
+                            id: 'track_001',
+                            type: 'Track Conflict',
+                            trains: [westernTrains[0], centralTrains[0]],
+                            location: 'Dadar Junction',
+                            timeToConflict: 8 + (Math.sin(baseTime / 10000) * 3), // Slowly changing time
+                            severity: 'High'
+                        });
+                    }
+                    
+                    if (transTrains.length >= 1 && westernTrains.length >= 2) {
+                        conflicts.push({
+                            id: 'platform_001',
+                            type: 'Platform Clash',
+                            trains: [transTrains[0], westernTrains[1] || westernTrains[0]],
+                            location: 'Bandra Platform 1',
+                            timeToConflict: 12 + (Math.cos(baseTime / 15000) * 4), // Slowly changing time
+                            severity: 'Medium'
+                        });
+                    }
+                    
+                    // Fallback conflicts if no trains available yet
+                    if (conflicts.length === 0) {
+                        conflicts.push({
+                            id: 'track_001',
+                            type: 'Track Conflict',
+                            trains: ['W001', 'C001'],
+                            location: 'Dadar Junction',
+                            timeToConflict: 8,
+                            severity: 'High'
+                        });
+                        
+                        conflicts.push({
+                            id: 'platform_001',
+                            type: 'Platform Clash',
+                            trains: ['T001', 'W002'],
+                            location: 'Bandra Platform 1',
+                            timeToConflict: 12,
+                            severity: 'Medium'
+                        });
+                    }
+                }
+                
+                const conflictHTML = conflicts.map(conflict => `
+                    <div class="conflict-item" style="background: rgba(255,255,255,0.2); padding: 8px; border-radius: 4px; margin: 5px 0;">
+                        <div style="font-weight: bold;">${conflict.type} (${conflict.timeToConflict.toFixed(1)}min)</div>
+                        <div style="font-size: 11px;">${conflict.trains.join(' & ')} @ ${conflict.location}</div>
+                        <button onclick="resolveConflict('${conflict.id}')" style="background: #27ae60; color: white; border: none; padding: 4px 8px; border-radius: 3px; font-size: 10px; margin-top: 4px; cursor: pointer;">Resolve</button>
+                    </div>
+                `).join('');
+                
+                document.getElementById('conflict-alerts').innerHTML = conflictHTML || 
+                    '<div style="background: rgba(255,255,255,0.2); padding: 8px; border-radius: 4px;">✅ No conflicts detected</div>';
+            }
+            
+            function detectConflict(train1, train2) {
+                // Simple conflict detection based on position and timing
+                if (train1.line === train2.line) {
+                    const distance = Math.abs((train1.positionInSegment || 0) - (train2.positionInSegment || 0));
+                    return distance < 0.3; // Trains too close on same line
+                }
+                
+                // Junction conflicts
+                const junctionStations = ['Dadar', 'Kurla', 'Thane'];
+                const train1AtJunction = junctionStations.includes(train1.current);
+                const train2AtJunction = junctionStations.includes(train2.current);
+                
+                return train1AtJunction && train2AtJunction && Math.random() < 0.3;
+            }
+            
+            function getConflictType() {
+                const types = ['Track Conflict', 'Platform Clash', 'Signal Block', 'Route Overlap'];
+                return types[Math.floor(Math.random() * types.length)];
+            }
+            
+            function getConflictLocation(train1, train2) {
+                const locations = [
+                    'Dadar Junction', 'Kurla Station', 'Bandra Platform 1', 'Thane Yard',
+                    'Mumbai Central', 'Andheri Junction', 'Signal Block 42A'
+                ];
+                return locations[Math.floor(Math.random() * locations.length)];
+            }
+            
+            function getConflictSeverity(timeToConflict) {
+                if (timeToConflict < 5) return 'Critical';
+                if (timeToConflict < 10) return 'High';
+                if (timeToConflict < 15) return 'Medium';
+                return 'Low';
+            }
+            
+            // Quick Actions System
+            function selectTrain(trainId) {
+                // Remove previous selection highlighting
+                if (selectedTrain && trainMarkers[selectedTrain]) {
+                    const prevMarker = trainMarkers[selectedTrain];
+                    const prevIcon = prevMarker.getElement();
+                    if (prevIcon) {
+                        prevIcon.classList.remove('selected-train');
+                    }
+                }
+                
+                selectedTrain = trainId;
+                
+                // Add highlighting to selected train
+                if (trainMarkers[trainId]) {
+                    const marker = trainMarkers[trainId];
+                    const icon = marker.getElement();
+                    if (icon) {
+                        icon.classList.add('selected-train');
+                    }
+                }
+                
+                updateQuickActionsDisplay();
+                console.log(`🎯 Train ${trainId} selected for quick actions`);
+            }
+            
+            function updateQuickActionsDisplay() {
+                if (!selectedTrain) {
+                    document.getElementById('quick-actions').innerHTML = `
+                        <div style="margin: 8px 0;">
+                            <strong>No train selected</strong>
+                            <div style="font-size: 10px; color: #fff; margin-top: 4px;">
+                                Click on a train in the priority list or map to select
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const actionHTML = `
+                    <div style="margin: 8px 0;">
+                        <strong>Selected: ${selectedTrain}</strong>
+                        <div style="margin: 6px 0;">
+                            <button onclick="performQuickAction('hold', '${selectedTrain}')" class="quick-action-btn">Hold 2min (+3min delay)</button>
+                            <button onclick="performQuickAction('swap', '${selectedTrain}')" class="quick-action-btn">Swap Platform (saves 2min)</button>
+                            <button onclick="performQuickAction('reroute', '${selectedTrain}')" class="quick-action-btn">Loop Reroute (+8min)</button>
+                        </div>
+                        <div style="font-size: 10px; color: #fff; margin-top: 4px;" id="action-preview">
+                            Hover over actions to see impact preview
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('quick-actions').innerHTML = actionHTML;
+                
+                // Add hover events for action preview
+                document.querySelectorAll('.quick-action-btn').forEach(btn => {
+                    btn.addEventListener('mouseenter', function() {
+                        const action = this.textContent;
+                        let preview = '';
+                        
+                        if (action.includes('Hold')) {
+                            preview = 'Delays train by 3min, clears junction for W067, saves network 5min';
+                        } else if (action.includes('Swap')) {
+                            preview = 'Moves to Platform 2, reduces boarding time, saves 2min';
+                        } else if (action.includes('Reroute')) {
+                            preview = 'Via Kurla loop, avoids congestion, adds 8min to journey';
+                        }
+                        
+                        document.getElementById('action-preview').textContent = preview;
+                    });
+                    
+                    btn.addEventListener('mouseleave', function() {
+                        document.getElementById('action-preview').textContent = 'Hover over actions to see impact preview';
+                    });
+                });
+            }
+            
+            function performQuickAction(action, trainId) {
+                // Check if train exists in detailedTrains, if not try to find it in the unified train data
+                let train = detailedTrains[trainId];
+                
+                if (!train) {
+                    // Try to find train in current simulation data
+                    const unifiedTrains = generateUnifiedTrainData();
+                    train = unifiedTrains.find(t => t.id === trainId);
+                    
+                    if (train) {
+                        // Add it to detailedTrains for future reference
+                        detailedTrains[trainId] = train;
+                    } else {
+                        console.log(`❌ Train ${trainId} not found in simulation`);
+                        console.log('Available trains:', Object.keys(detailedTrains));
+                        alert(`Train ${trainId} not found! Try selecting a different train from the map or priority list.`);
+                        return;
+                    }
+                }
+                
+                let actionResult = '';
+                
+                switch (action) {
+                    case 'hold':
+                        train.delay += 3;
+                        train.speed = 0; // Stop the train
+                        actionResult = `${trainId} held for 2 minutes. Added 3min delay.`;
+                        
+                        // Resume after 2 seconds (simulated 2 minutes)
+                        setTimeout(() => {
+                            if (detailedTrains[trainId]) {
+                                detailedTrains[trainId].speed = 35 + Math.random() * 15;
+                            }
+                        }, 2000);
+                        break;
+                        
+                    case 'swap':
+                        train.delay = Math.max(0, train.delay - 2);
+                        train.passengers -= Math.floor(Math.random() * 200 + 100); // Some passengers get off
+                        actionResult = `${trainId} moved to alternate platform. Saved 2min delay.`;
+                        break;
+                        
+                    case 'reroute':
+                        train.delay += 8;
+                        train.current = 'Rerouted via Loop';
+                        train.next = 'Resume Original Route';
+                        actionResult = `${trainId} rerouted via loop line. Added 8min journey time.`;
+                        break;
+                        
+                    default:
+                        actionResult = 'Unknown action';
+                }
+                
+                // Show action result
+                document.getElementById('action-preview').innerHTML = `
+                    <strong style="color: #2ecc71;">✅ ${actionResult}</strong>
+                `;
+                
+                // Clear selection after action
+                setTimeout(() => {
+                    selectedTrain = null;
+                    updateQuickActionsDisplay();
+                }, 3000);
+                
+                console.log(`🎯 Quick Action: ${action} performed on ${trainId}`);
+                console.log(`📊 Result: ${actionResult}`);
+            }
+            
+            function resolveConflict(conflictId) {
+                conflictResolutions[conflictId] = {
+                    resolvedAt: Date.now(),
+                    method: getResolutionMethod()
+                };
+                
+                const resolutionMethod = conflictResolutions[conflictId].method;
+                
+                // Apply resolution effects to trains using actual train IDs
+                const availableTrains = Object.keys(detailedTrains);
+                const westernTrains = availableTrains.filter(id => id.startsWith('W'));
+                const centralTrains = availableTrains.filter(id => id.startsWith('C'));
+                const transTrains = availableTrains.filter(id => id.startsWith('T'));
+                
+                if (conflictId === 'track_001') {
+                    // Apply effects to first available Western and Central trains
+                    if (westernTrains.length > 0 && detailedTrains[westernTrains[0]]) {
+                        detailedTrains[westernTrains[0]].delay += 2;
+                    }
+                    if (centralTrains.length > 0 && detailedTrains[centralTrains[0]]) {
+                        detailedTrains[centralTrains[0]].delay = Math.max(0, detailedTrains[centralTrains[0]].delay - 1);
+                    }
+                } else if (conflictId === 'platform_001') {
+                    // Apply effects to first available Trans-Harbour and Western trains
+                    if (transTrains.length > 0 && detailedTrains[transTrains[0]]) {
+                        detailedTrains[transTrains[0]].delay += 3;
+                    }
+                    if (westernTrains.length > 1 && detailedTrains[westernTrains[1]]) {
+                        detailedTrains[westernTrains[1]].delay = Math.max(0, detailedTrains[westernTrains[1]].delay - 2);
+                    }
+                }
+                
+                console.log(`🔧 Conflict ${conflictId} resolved using ${resolutionMethod}`);
+                
+                // Update display immediately
+                updateConflictDetection();
+            }
+            
+            function getResolutionMethod() {
+                const methods = [
+                    'Priority Reordering',
+                    'Platform Reassignment', 
+                    'Speed Adjustment',
+                    'Hold & Release',
+                    'Route Modification'
+                ];
+                return methods[Math.floor(Math.random() * methods.length)];
+            }
+            
+            // Update functions for the new systems
+            function updateAdvancedSystems() {
+                if (!isSimulationRunning) return;
+                
+                updateJunctionPriority();
+                updateConflictDetection();
+                
+                if (!selectedTrain) {
+                    updateQuickActionsDisplay();
+                }
+            }
+            
+            // Control functions for better data handling
+            function toggleAdvancedUpdates() {
+                advancedUpdatesPaused = !advancedUpdatesPaused;
+                const btn = document.getElementById('pause-advanced-btn');
+                
+                if (advancedUpdatesPaused) {
+                    btn.textContent = '▶️ Resume Updates';
+                    btn.style.background = '#27ae60';
+                } else {
+                    btn.textContent = '⏸️ Pause Updates';
+                    btn.style.background = '#e67e22';
+                }
+                
+                console.log(`📊 Advanced systems updates ${advancedUpdatesPaused ? 'paused' : 'resumed'}`);
+            }
+            
+            function manualConflictScan() {
+                console.log('🔍 Manual conflict scan initiated');
+                updateConflictDetection();
+                
+                // Temporarily show scan feedback
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Scanned';
+                btn.style.background = '#27ae60';
+                
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '#c0392b';
+                }, 2000);
+            }
         </script>
     </body>
     </html>
